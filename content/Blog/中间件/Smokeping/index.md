@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2025-11-20T09:35:03+08:00
-lastmod: 2025-11-20T09:39:41+08:00
+lastmod: 2025-11-20T10:17:27+08:00
 ---
 
 ## 安装
@@ -144,7 +144,7 @@ newuser@ubuntu22:/var/cache/smokeping/images/Other$ sudo rm -r dianxin_last_3110
 ## 其它
 ### Python脚本
 这里有一个Python脚本
-![](assets/Smokeping/readTitleHostFromXLSX.py)
+{{< code file="assets/Smokeping/readTitleHostFromXLSX.py" language="python" >}}
 ![](assets/Smokeping/image.png)
 负责从上图格式的`.xslx`文件中提取其中(探测点,探测源IP)两列的数据,并将其生成为smokeping所用的Target的配置文件,格式类似于:
 ```

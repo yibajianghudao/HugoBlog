@@ -1,0 +1,18 @@
+{{- /* 获取传入的相对路径，比如 assets/Smokeping/readTitleHostFromXLSX.py */ -}}
+{{- $relPath := .Get "file" -}}
+
+{{- /* 代码语言，默认 text，可以传 python/js 等 */ -}}
+{{- $lang := .Get "language" | default "text" -}}
+
+{{- /* 当前页面所在目录，比如 content/Blog/中间件/Smokeping/ */ -}}
+{{- $pageDir := .Page.File.Dir -}}
+
+{{- /* 拼出实际文件路径 */ -}}
+{{- $fullPath := printf "%s%s" $pageDir $relPath -}}
+
+{{- /* 读文件内容 */ -}}
+{{- $content := readFile $fullPath -}}
+
+{{- /* 包一层 Markdown 三引号代码块，再交给 markdownify 渲染 */ -}}
+{{- (print "```" $lang "\n" $content "\n```") | markdownify -}}
+
