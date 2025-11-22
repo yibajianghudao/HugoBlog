@@ -8,7 +8,7 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T09:35:47+08:00  
-lastmod: 2025-11-22T13:57:39+08:00  
+lastmod: 2025-11-22T14:57:37+08:00
 ---
 ## Windows  
 Windows下载iso镜像后制作安装介质,可以使用Ventoy集成多个PE系统或系统镜像  
@@ -154,7 +154,7 @@ ip address
 ```  
 ##### 新增一个网卡并配置  
 在虚拟机中新增了一个网卡:  
-![](assets/安装操作系统/修改网络配置.png)  
+![](assets/安装操作系统/network.png) 
 查看新的网卡名:  
 ```  
 ip address  
