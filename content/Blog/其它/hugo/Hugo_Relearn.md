@@ -8,7 +8,7 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T10:25:16+08:00  
-lastmod: 2025-11-22T14:17:41+08:00
+lastmod: 2025-11-22T14:39:09+08:00
 ---
 ### 显示代码文件  
 参考[# Hugo Shortcode 渲染外部代码和文件](https://blog.lockshell.com/posts/hugo-shortcode-render-external-file/)  
