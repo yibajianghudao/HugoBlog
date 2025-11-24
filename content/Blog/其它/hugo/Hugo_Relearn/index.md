@@ -8,7 +8,7 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T10:25:16+08:00  
-lastmod: 2025-11-22T14:39:09+08:00
+lastmod: 2025-11-24T11:11:12+08:00
 ---
 ### 显示代码文件  
 参考[# Hugo Shortcode 渲染外部代码和文件](https://blog.lockshell.com/posts/hugo-shortcode-render-external-file/)  
@@ -30,7 +30,7 @@ lastmod: 2025-11-22T14:39:09+08:00
 ```  
 然后在文章中按照下面的格式导入即可:  
 ```  
-{{< code file="assets/Smokeping/readTitleHostFromXLSX.py" language="python" >}}  
+{{</* code file="assets/Smokeping/readTitleHostFromXLSX.py" language="python" */>}}
 ```  
 ### 行末添加空格  
 在Obsidian中默认的回车会被渲染为换行,而在hugo中两个空格后的回车才被显示为换行  
