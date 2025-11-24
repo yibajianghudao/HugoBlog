@@ -8,10 +8,10 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T09:16:20+08:00  
-lastmod: 2025-11-22T13:58:11+08:00
+lastmod: 2025-11-24T11:35:33+08:00
 ---
 ~~打算把文章从hexo框架迁移到hugo框架,使用lotusdocs主题,本地使用Obsidian编辑~~  
-迁移失败,现在使用hugo+[relearn](https://github.com/McShelby/hugo-theme-relearn)主题  
+迁移失败,现在使用hugo+[relearn](https://github.com/McShelby/hugo-theme-relearn)主题
 ## 安装  
 ### 安装hugo  
 参考[Install Hugo on Linux](https://gohugo.io/installation/linux/)  

@@ -1,7 +1,7 @@
 ---
-title: 运维基础
+title: 基础
 type: chapter
-weight: 10
+weight: 2
 ---
 
 {{% children type="list" description=true %}}

@@ -1,6 +1,6 @@
 ---
 title: Linux
 type: chapter
-weight: 10
+weight: 3
 ---
 {{% children type="list" description=true %}}
