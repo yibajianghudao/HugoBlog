@@ -8,8 +8,10 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T09:13:31+08:00  
-lastmod: 2025-11-20T09:13:31+08:00  
+lastmod: 2025-12-01T14:07:57+08:00
 ---
+
+## inode使用率过高  
 首先使用`df -h`或`df -i`查看是空间不足还是inode满了  
 ```  
 df -h  
@@ -38,7 +40,6 @@ tmpfs                             255153     18 255135    1% /sys/fs/cgroup
 tmpfs                             255153     12 255141    1% /run/user/0  
 ```  
 是由于inode使用率满了  
-## inode使用率过高  
 大多数是因为文件数量过多,删除无用的文件即可  
 可以使用`find`命令递归查看目录下的文件,使用`wc`统计总个数:  
 ```  
@@ -137,4 +138,101 @@ root@cww:~# ip a
        valid_lft forever preferred_lft forever  
     inet6 fe80::20c:29ff:fed0:a2d5/64 scope link  
        valid_lft forever preferred_lft forever  
+```
+
+## 存储空间不足
+### 清理MySQL Binlog日志
+```
+# df -h
+Filesystem                         Size  Used Avail Use% Mounted on
+tmpfs                              197M  1.4M  196M   1% /run
+/dev/mapper/ubuntu--vg-ubuntu--lv   14G   13G  878M  94% /
+tmpfs                              982M     0  982M   0% /dev/shm
+tmpfs                              5.0M     0  5.0M   0% /run/lock
+/dev/sda2                          1.7G  252M  1.4G  16% /boot
+tmpfs                              197M  4.0K  197M   1% /run/user/1000
+tmpfs                              197M  4.0K  197M   1% /run/user/0
+```
+发现磁盘剩余空间比较少，使用`du`命令查看是哪个目录：  
+```
+# du -h --max-depth=1 / | sort -rh
+14G     /
+6.9G    /var
+3.6G    /usr
+1.3G    /snap
+252M    /boot
+7.2M    /etc
+1.4M    /run
+92K     /tmp
+92K     /home
+72K     /root
+16K     /lost+found
+4.0K    /srv
+4.0K    /opt
+4.0K    /mnt
+4.0K    /media
+4.0K    /cdrom
+0       /sys
+0       /proc
+0       /dev
+```
+逐个目录排查：
+```
+# du -h --max-depth=1 /var/lib/ | sort -rh
+5.4G    /var/lib/
+4.4G    /var/lib/mysql
+553M    /var/lib/snapd
+```
+发现是由于`/var/lib/mysql/`目录下的binlog日志文件过多导致的：  
+```
+# du -ah --max-depth=1 /var/lib/mysql | sort -rh
+4.4G    /var/lib/mysql
+1.1G    /var/lib/mysql/zabbix
+101M    /var/lib/mysql/#innodb_redo
+101M    /var/lib/mysql/binlog.000052
+101M    /var/lib/mysql/binlog.000050
+101M    /var/lib/mysql/binlog.000048
+101M    /var/lib/mysql/binlog.000046
+98M     /var/lib/mysql/binlog.000045
+98M     /var/lib/mysql/binlog.000044
+98M     /var/lib/mysql/binlog.000043
+```
+mysql的binlog(二进制日志文件)是一种记录数据库所有更改操作的日志，文件存储了数据修改的原始信息，而不是查询的结果，使得它对数据库的复制，恢复和故障处理等功能至关重要。  
+删除之前先通过`scp`备份文件到主机：  
+```
+# 使用''包裹可以阻止通配符在本地解析
+$ scp 'root@42.225.98.24:/var/lib/mysql/binlog.*' ./Downloads
+```
+然后登录到mysql通过：
+```
+PURGE BINARY LOGS TO 'binlog.000051';
+```
+删除小于`binlog.000051`的所有 binlog。  
+通过`PURGE BINARY LOGS`清理可以清理掉binlog的索引文件(`binlog.index`)，其中记载着存在的binlog文件，直接通过`rm`删除需要手动清理该文件。  
+清理完之后可以先进行一次全量备份：
+```
+# mysqldump -u root -p --single-transaction --all-databases > full.sql
+```
+然后修改mysql的配置文件配置binlog自动删除：
+```
+vim /etc/mysql/mysql.conf.d/mysqld.cnf 
+[mysqld]
+# 保留7天
+binlog_expire_logs_seconds = 604800
+# binlog文件大小
+max_binlog_size = 100M
+```
+随后重启mysql服务：
+```
+# systemctl restart mysql 
+```
+再次登录mysql查看配置状态：
+```
+mysql> SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
++----------------------------+---------+
+| Variable_name              | Value   |
++----------------------------+---------+
+| binlog_expire_logs_seconds | 2592000 |
++----------------------------+---------+
+1 row in set (0.01 sec)
 ```
