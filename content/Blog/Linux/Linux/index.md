@@ -43,6 +43,7 @@ inode中存储的数据包含:
 | `0`        | **标准输入** | `/dev/stdin`  | 读取输入（如键盘输入） |  
 | `1`        | **标准输出** | `/dev/stdout` | 输出正常结果（到终端） |  
 | `2`        | **标准错误** | `/dev/stderr` | 输出错误信息（到终端） |  
+
 ##### 用途
 1. **操作文件**  
 - 通过 `open()` 系统调用打开文件时，内核返回一个 fd：  
@@ -105,6 +106,41 @@ top     35752 hparch   5r   REG   0,21        0 4026532027 /proc/meminfo
 # 单个进程最多能打开1024个文件描述符  
 ulimit -n  
 1024  
+```  
+
+##### 解除限制  
+默认的文件描述符限制大小为`1024`，对于运行高并发的web应用或需要打开大量文件/Socket的程序的服务器，文件描述符很可能成为性能瓶颈，常见报错：`Too many open files` ：  
+```bash
+$ ab -n 3000000 -c 1024 http://127.0.0.1/
+This is ApacheBench, Version 2.3 <$Revision: 1879490 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient)
+socket: Too many open files (24)
+```
+文件描述符分为用户级和系统级，分别表示单个进程能打开的FD数量和整个系统同时打开的FD的总数  
+可以使用`ulimit -n`查看文件描述符的限制  
+```  
+# 临时修改  
+# 用户级  
+ulimit -n 65535  
+# 系统级  
+sudo sysctl -w fs.file-max=65535  
+
+# 永久修改  
+# 用户级  
+sudo vim /etc/security/limits.conf  
+* hard nofile 65535  
+* soft nofile 65535  
+# 系统级  
+sudo vim /etc/sysctl.conf  
+fs.file-max=65535  
+sysctl -p	# 从配置文件“/etc/sysctl.conf”加载内核参数设置  
+
+# systemd管理的服务还需要在unit文件或/etc/systemd/system.conf中添加：  
+[Service]  
+LimitNOFILE=65535  
 ```  
 
 ### Shell基础  
@@ -997,31 +1033,6 @@ sudo swapon /dev/sdXn
 `fdisk -l`查看磁盘分区表  
 `df -h`查看磁盘使用情况  
 `du -h /path/*`查看目录或文件占用空间  
-#### 文件描述符限制  
-默认的文件描述符限制大小为`1024`，对于运行高并发的web应用或需要打开大量文件/Socket的程序的服务器，文件描述符很可能成为性能瓶颈，常见报错：`Too many open files`  
-文件描述符分为用户级和系统级，分别表示单个进程能打开的FD数量和整个系统同时打开的FD的总数  
-可以使用`ulimit -n`查看文件描述符的限制  
-```  
-# 临时修改  
-# 用户级  
-ulimit -n 65535  
-# 系统级  
-sudo sysctl -w fs.file-max=65535  
-
-# 永久修改  
-# 用户级  
-sudo vim /etc/security/limits.conf  
-* hard nofile 65535  
-* soft nofile 65535  
-# 系统级  
-sudo vim /etc/sysctl.conf  
-fs.file-max=65535  
-sysctl -p	# 从配置文件“/etc/sysctl.conf”加载内核参数设置  
-
-# systemd管理的服务还需要在unit文件或/etc/systemd/system.conf中添加：  
-[Service]  
-LimitNOFILE=65535  
-```  
 ### 时间管理  
 #### 打印时间  
 使用`date`命令可以灵活的打印出时间  
