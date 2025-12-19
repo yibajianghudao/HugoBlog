@@ -8,7 +8,7 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T09:35:03+08:00  
-lastmod: 2025-12-19T17:20:12+08:00
+lastmod: 2025-12-19T17:28:35+08:00
 ---
 ## 安装  
 ### ubuntu
@@ -348,19 +348,19 @@ newuser@ubuntu22:/var/cache/smokeping/images/Other$ sudo rm -r dianxin_last_3110
 ++ liaoning  
 menu = 辽宁  
 title = 辽宁  
-host = 1.180.240.1  
+host = 1.150.240.1  
 ++ heilongjiang  
 menu = 黑龙江  
 title = 黑龙江  
-host = 222.170.0.61  
+host = 222.230.0.61  
 ++ jilin  
 menu = 吉林  
 title = 吉林  
-host = 222.168.78.1  
+host = 212.168.78.1  
 ++ shandong  
 menu = 山东  
 title = 山东  
-host = 42.199.255.100  
+host = 42.129.255.100  
 ```  
 也可以按照给定的标签分类,类似于:  
 ```  
@@ -370,17 +370,17 @@ title = 电信
 ++ beijingdianxin  
 menu = 北京电信  
 title = 北京电信  
-host = 220.181.111.37  
+host = 220.141.111.37  
 ++ tianjindianxin  
 menu = 天津电信  
 title = 天津电信  
-host = 42.122.0.1  
+host = 2.122.0.1  
 ++ hebeidianxin  
 menu = 河北电信  
 title = 河北电信  
-host = 47.92.159.1  
+host = 4.92.159.1  
 ++ neimenggudianxin  
 menu = 内蒙古电信  
 title = 内蒙古电信  
-host = 42.123.64.1  
+host = 42.13.64.1  
 ```
