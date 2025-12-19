@@ -8,7 +8,7 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-24T16:36:17+08:00  
-lastmod: 2025-12-16T17:44:20+08:00
+lastmod: 2025-12-18T09:59:11+08:00
 ---
 ceph是一个开源的分布式存储系统,用于构建高性能,高可扩展性,高可靠性的存储集群.常用于云计算,企业数据中心,大规模存储等场景  
 ## 特点  
@@ -85,6 +85,13 @@ Pool,PG,OSD的数量关系：
 
 ## 部署
 ### 准备工作
+Ceph集群上的主机都需要满足以下要求：
+- Python3
+- Systemd
+- Podman or Docker 来运行容器
+- 时间同步(Chrony或者ntpd)
+- LVM2 配置存储设备
+#### 配置软件源
 安装阿里云`epel`和`docker-ce`软件源
 ```
 curl -o /etc/yum.repos.d/docker-ce.repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
@@ -93,7 +100,7 @@ curl -o /etc/yum.repos.d/epel-7.repo  http://mirrors.aliyun.com/repo/epel-7.repo
 yum clean all 
 yum makecache
 ```
-关闭防火墙和SELinux
+#### 关闭防火墙和SELinux
 ```
 systemctl disable --now firewalld
 
@@ -102,7 +109,13 @@ SELINUX=disabled
 
 reboot
 ```
-### 安装chrony
+#### 设置服务器名
+```
+hostnamectl set-hostname ceph1
+hostnamectl set-hostname ceph2
+hostnamectl set-hostname ceph3
+```
+#### 安装chrony
 安装chrony进行时间同步
 ```
 yum install chrony -y
@@ -132,7 +145,7 @@ logdir /var/log/chrony
 leapsectz right/UTC
 ```
 安装后使用`chronyc sources -v`在客户端进行验证。  
-### 安装python3
+#### 安装python3
 安装编译用到的软件和openssl 1.1.1(自带的openssl 1.0太旧，python需要至少openssl 1.1.1)
 ```
 yum groupinstall "Development Tools"
@@ -229,7 +242,7 @@ make install
 ln -s /usr/python/bin/python3 /usr/bin/python3
 ln -s /usr/python/bin/pip3 /usr/bin/pip3
 ```
-### 安装docker
+#### 安装docker
 ```
 yum install -y yum-utils device-mapper-persistent-data lvm2
 
@@ -272,10 +285,135 @@ chmod +x cephadm
 $ which cephadm
 /usr/sbin/cephadm
 ```
+### 创建集群
+首先需要确保：
+1. 主机名不能太长，例如`localhost.localdomain`就太长
+2. 主机上存在主机名的DNS解析
+3. SSH端口是默认的`22`，否则需要手动传入SSH配置文件
+4. 需要一个集群内部其他机器可访问的IP地址
 
+```
+# 修改主机名
+hostnamectl set-hostname ceph1
+
+# 添加主机名的DNS解析
+vim /etc/hosts
+
+127.0.0.1   localhost ceph1
+::1         localhost ceph1
+192.168.1.2 localhost ceph1
+
+# 创建一个SSH的配置文件
+vim ssh_config
+
+Host *
+  Port 5678
+  User root
+  StrictHostKeyChecking no
+```
+然后通过`cephadm`命令创建一个集群：  
+```
+# 这里使用和其他Ceph机器同处的局域网IP即可
+cephadm bootstrap --mon-ip 192.168.1.2 --ssh-config ./ssh_config
+```
+然后需要安装`ceph`命令，[官方文档](https://docs.ceph.com/en/latest/cephadm/install/#enable-ceph-cli)有几种方法：
+- `cephadm shell`
+- `cephadm shell -- ceph -s`
+- `cephadm install ceph-common`
+
+我这里选择第三种
+```
+# 官方源下载太慢，这里换成清华源
+sed -i 's_download.ceph.com_mirrors.tuna.tsinghua.edu.cn/ceph_g' /etc/yum.repos.d/ceph.repo 
+
+# 安装ceph-common软件包
+cephadm install ceph-common
+```
+然后就可以使用`ceph`命令
+```
+# 查看集群状态
+ceph status
+  cluster:
+    id:     59f56c2c-dafa-11f0-a750-68a8297ec412
+    health: HEALTH_WARN    # 这里有一个warn很正常，是由于还没有添加OSD
+            OSD count 0 < osd_pool_default_size 3
+ 
+  services:
+    mon: 1 daemons, quorum ceph1 (age 3h)
+    mgr: ceph1.zxojlm(active, since 3h)
+    osd: 0 osds: 0 up, 0 in
+ 
+  data:
+    pools:   0 pools, 0 pgs
+    objects: 0 objects, 0 B
+    usage:   0 B used, 0 B / 0 B avail
+    pgs:     
+```
+### 添加主机
+首先需要把集群的公共SSH密钥添加到新主机root用户的`authorized_keys`文件：
+```
+ssh-copy-id -f -i /etc/ceph/ceph.pub root@192.168.1.3
+ssh-copy-id -f -i /etc/ceph/ceph.pub root@192.168.1.4
+```
+然后告诉Ceph新节点是集群的一部分：
+```
+# 命令是: ceph orch host add *<newhost>* [*<ip>*] [*<label1> ...*]，其中 newhost 必须是主机的hostname
+ceph orch host add ceph2 192.168.1.3 --labels _admin
+
+# 也可以先添加主机，后添加标签
+ceph orch host add ceph3 192.168.1.4 
+ceph orch host label add ceph3 _admin
+```
+> 默认情况下，`ceph.conf`和`ceph.client.admin.keyring`密钥环只在具有`_admin`标签的主机上存在，最好为多个主机提供`_admin`标签(创建集群的主机默认具有该权限)，以便 Ceph Cli 能够在多个主机上访问，否则一旦该主机故障，其他主机需要先复制下来这些文件才能访问 Ceph Cli。
+
+查看当前集群的状态：
+```
+ceph orch host ls
+HOST   ADDR         LABELS  STATUS  
+ceph1  ceph1                        
+ceph2  192.168.1.3  _admin          
+ceph3  192.168.1.4  _admin          
+```
+状态没有显示，可能是已经`online`了，可以查看运行的容器，观察有没有运行在新的主机上：
+```
+ceph orch ps
+ceph orch ps
+NAME                 HOST   STATUS         REFRESHED  AGE  VERSION  IMAGE NAME                                IMAGE ID      CONTAINER ID  
+alertmanager.ceph1   ceph1  running (39m)  2m ago     4h   0.20.0   quay.io/prometheus/alertmanager:v0.20.0   0881eb8f169f  84a620ebf962  
+crash.ceph1          ceph1  running (4h)   2m ago     4h   15.2.17  quay.io/ceph/ceph:v15                     93146564743f  8a574d091104  
+crash.ceph2          ceph2  running (39m)  2m ago     39m  15.2.17  quay.io/ceph/ceph:v15                     93146564743f  ab182ee00a2f  
+crash.ceph3          ceph3  running (3m)   2m ago     3m   15.2.17  quay.io/ceph/ceph:v15                     93146564743f  f6e9ab35a36e  
+```
+默认集群中只有一个`Mon`，如果集群里的所有主机都在同一个子网，`cephadm`会自动管理Mon的数量，通常建议值是三到五个Mon，他们会自动分散到不同的主机上，可以手动干预指定Mon放置的主机：
+```
+ceph orch apply mon --placement="ceph1,ceph2,ceph3"
+```
+### 添加OSD
+Ceph上使用的磁盘必须满足以下条件：
+1. 没有分区
+2. 不具有任何LVM状态
+3. 没有被挂载
+4. 不包含文件系统
+5. 不包含Ceph BlueStore OSD
+6. 空间大于5GB
+
+列出所有节点上可用的磁盘：
+```
+ceph orch device ls
+```
+可以手动指定设备：
+```
+ceph orch daemon add osd ceph1:/dev/sdb
+```
+也可以直接消耗所有可用的设备：
+```
+ceph orch apply osd --all-available-devices
+```
+> 不要尝试手动指定设备和消耗所有设备同时使用，这会导致ceph集群陷入幽灵状态，即显示OSD存在但一直处于`down`状态。
 
 ## 参考
 - [# Red Hat Ceph Storage 架构指南](https://docs.redhat.com/zh-cn/documentation/red_hat_ceph_storage/8/html/architecture_guide/index)
 - [](https://www.wuzao.com/ceph/en/latest/cephadm/install/index.html#cephadm-install-curl)
 - [](https://www.cnblogs.com/Pigs-Will-Fly/p/18671388#_label3_0)
 - [](https://docs.ceph.com/en/latest/cephadm/)
+- [](https://www.yuque.com/xianzhou-eiffx/aklhoc/vz2kwrequbkhoxhv)
