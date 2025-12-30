@@ -8,10 +8,10 @@ author: jianghudao
 tags:  
 isCJKLanguage: true  
 date: 2025-11-20T10:25:16+08:00  
-lastmod: 2025-12-25T17:02:05+08:00
+lastmod: 2025-12-30T14:21:33+08:00
 ---
 ### 显示代码文件  
-参考[# Hugo Shortcode 渲染外部代码和文件](https://blog.lockshell.com/posts/hugo-shortcode-render-external-file/)  
+参考[Hugo Shortcode 渲染外部代码和文件](https://blog.lockshell.com/posts/hugo-shortcode-render-external-file/)  
 把代码从文件中读取并渲染在页面上,使用[hugo shortcode](https://gohugo.io/content-management/shortcodes)实现  
 在hugo仓库根目录下新建`layouts/shortcodes/code.html`,写入:  
 ```  
@@ -66,3 +66,28 @@ ROCKy ----- 24141 	ROCKy%20-----%2024141		rocky--24141
 虽然脚本已经尽可能做到适配，但是有以下问题无法解决，是由于Obsidian自身链接过程中丢失了原标题内容的信息，因此无法被脚本读取到，只能尽量避免使用:
 1. 标题内使用`#`,Obsidian的链接会将`#`转换为`%20`(和空格一样)
 2. 标题内使用两个及以上连续的空格,Obsidian的链接会将两个以上的空格合并为一个，而hugo没有合并
+
+下面有一些插入文章的测试用例:
+```
+[模板文件](Linux/Systemd.md#模板文件)  
+[CentOS7](虚拟机/Docker.md#centos7)  
+[mon daemon错误](存储/ceph.md#mon-daemon错误)  
+[Ubuntu22.04](虚拟机/安装操作系统.md#ubuntu2204)  
+[VNC](网络/远程登录.md#vnc)  
+[,.[]命令-](Link.md#命令-)  
+[UbunTTU - 24141](Link.md#ubunttu---24141)  
+[CentoU --- 24141](Link.md#centou--24141)  
+[ROCKy ----- 24141](Link.md#rocky--24141)  
+[ARCH---24141](Link.md#arch24141)  
+[LINUX-LINUX](Link.md#linux-linux)  
+[WS WPS ''""](Link.md#ws-wps-)  
+[bianliaNg a,., 22 ()](Link.md#bianliang-a-22-)  
+[Link](Link.md)  
+[安装 过程](Link.md#安装-过程)  
+[构建,清单](Link.md#构建清单)  
+[元组](Link.md#元组)   
+[,.[]命令#-](Link.md#命令--)  
+[,.[]命令 -](Link.md#命令--)  
+[安装  过程](Link.md#安装-过程)  
+[LINUX(2024)](Link.md#linux2024)  
+```
