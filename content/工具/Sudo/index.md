@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2026-01-09T10:20:59+08:00
-lastmod: 2026-01-09T10:50:00+08:00
+lastmod: 2026-01-09T10:55:21+08:00
 ---
 
 ## Secure Path
@@ -53,12 +53,7 @@ go: /usr/local/go
 $ whereis go
 go: /usr/local/go /usr/local/go/bin/go
 ```
-查看一下sudo的`$PATH`发现没有`/usr/local/go/bin`
-```
-$ sudo -i echo $PATH
-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
-```
-想起来我的这个路径是在`~/.zshrc`中配置的,~~root读不到也正常~~(这种想法是错误的,实际上sudo默认不会使用root的环境变量):
+想起来我的这个路径添加到`$PATH`是在`~/.zshrc`中配置的,~~root读不到也正常~~(这种想法是错误的,实际上sudo默认不会使用root的环境变量):
 ```
 $ cat ~/.zshrc | grep go
 export PATH=$PATH:/usr/local/go/bin
@@ -86,7 +81,13 @@ go: /usr/local/go /usr/local/go/bin/go
 ~~可以发现普通用户和sudo下都可以看到这个路径~~,普通用户可以直接运行,但是sudo就是找不到.  
 > 实际上`sudo echo $PATH`并不是输出sudo下的环境变量,而是先在当前shell中解释出`$PATH`然后由sudo调用`echo`命令输出(`sudo -i echo $PATH`也一样),真正的sudo下的环境变量要用`sudo env`查看
 
-然后发现是[Secure Path](Sudo.md#secure-path)导致的.直接使用sudo,环境变量会被`secure_path`覆盖.  
+然后发现是[Secure Path](Sudo.md#secure-path)导致的.直接使用sudo,环境变量会被`secure_path`覆盖.    
+查看一下sudo下的环境变量:
+```
+[~]$ sudo env | grep '^PATH='
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+```
+果然只有`secure_path`中的路径  
 可以直接使用`sudo -i`使用`login shell`来获得root的环境变量:
 ```
 [~]$ sudo -i env | grep '^PATH='                            
@@ -95,7 +96,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/usr
 [~]$ sudo -i go version
 go version go1.25.4 linux/amd64
 ```
-也可以把`/usr/local/go/bin/go`添加一个软链接到`secure_path`中的路径:
+更优雅的方法是把`/usr/local/go/bin/go`添加一个软链接到`secure_path`中的路径:
 ```
 [~]$ sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 [~]$ sudo ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt 
@@ -103,4 +104,6 @@ go version go1.25.4 linux/amd64
 lrwxrwxrwx 1 root root 20  1月  9 10:29 /usr/local/bin/go -> /usr/local/go/bin/go
 lrwxrwxrwx 1 root root 23  1月  9 10:29 /usr/local/bin/gofmt -> /usr/local/go/bin/gofmt
 
+[~]$ sudo go version         
+go version go1.25.4 linux/amd64
 ```
