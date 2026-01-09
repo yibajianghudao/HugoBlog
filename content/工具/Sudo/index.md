@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2026-01-09T10:20:59+08:00
-lastmod: 2026-01-09T10:30:20+08:00
+lastmod: 2026-01-09T10:44:17+08:00
 ---
 
 ## Secure Path
@@ -58,7 +58,7 @@ go: /usr/local/go /usr/local/go/bin/go
 $ sudo -i echo $PATH
 /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 ```
-想起来我的这个路径是在`~/.zshrc`中配置的,root读不到也正常:
+想起来我的这个路径是在`~/.zshrc`中配置的,~~root读不到也正常~~(这种想法是错误的,实际上sudo默认不会使用root的环境变量):
 ```
 $ cat ~/.zshrc | grep go
 export PATH=$PATH:/usr/local/go/bin
@@ -83,7 +83,8 @@ go: /usr/local/go /usr/local/go/bin/go
 [~]$ echo $PATH
 /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin
 ```
-可以发现普通用户和sudo下都可以看到这个路径,普通用户可以直接运行,但是sudo就是找不到.  
+~~可以发现普通用户和sudo下都可以看到这个路径~~,普通用户可以直接运行,但是sudo就是找不到.  
+> (实际上`sudo echo $PATH`并不是输出sudo下的环境变量,而是先在当前shell中解释出`$PATH`然后由sudo调用`echo`命令输出,真正的sudo下的环境变量要用`sudo env`查看)
 
 然后发现是[Secure Path](Sudo.md#secure-path)导致的.直接使用sudo,环境变量会被`secure_path`覆盖.  
 可以直接使用`sudo -i`使用`login shell`来获得root的环境变量:
