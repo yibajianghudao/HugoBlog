@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2026-01-09T10:20:59+08:00
-lastmod: 2026-01-09T10:46:09+08:00
+lastmod: 2026-01-09T10:50:00+08:00
 ---
 
 ## Secure Path
@@ -84,13 +84,13 @@ go: /usr/local/go /usr/local/go/bin/go
 /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin
 ```
 ~~可以发现普通用户和sudo下都可以看到这个路径~~,普通用户可以直接运行,但是sudo就是找不到.  
-> 实际上`sudo echo $PATH`并不是输出sudo下的环境变量,而是先在当前shell中解释出`$PATH`然后由sudo调用`echo`命令输出,真正的sudo下的环境变量要用`sudo env`查看
+> 实际上`sudo echo $PATH`并不是输出sudo下的环境变量,而是先在当前shell中解释出`$PATH`然后由sudo调用`echo`命令输出(`sudo -i echo $PATH`也一样),真正的sudo下的环境变量要用`sudo env`查看
 
 然后发现是[Secure Path](Sudo.md#secure-path)导致的.直接使用sudo,环境变量会被`secure_path`覆盖.  
 可以直接使用`sudo -i`使用`login shell`来获得root的环境变量:
 ```
-[~]$ sudo -i echo $PATH         
-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin
+[~]$ sudo -i env | grep '^PATH='                            
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/usr/local/go/bin
 
 [~]$ sudo -i go version
 go version go1.25.4 linux/amd64
