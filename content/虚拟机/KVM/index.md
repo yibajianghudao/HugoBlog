@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2025-12-08T10:09:41+08:00
-lastmod: 2026-01-20T14:42:54+08:00
+lastmod: 2026-01-21T16:54:38+08:00
 ---
 
 KVM(Kernel-based Virtual Machine 基于内核的虚拟机)，它是内置于 Linux 内核的 `hypervisor`，属于 `Type 1 Hypervisor`。  
@@ -226,7 +226,203 @@ kvmuser@kvm:~$ virsh net-list --all
 
 ![](assets/KVM/使用%20virt-manager%20远程管理-20260120092041967.png)
 
-##### 使用 virsh+virt-install 管理
+##### 使用 virsh+virt-install 本地管理
+
+使用 `virt-install` 创建虚拟机:
+
+```bash
+virt-install --cdrom /var/lib/libvirt/images/debian-13.3.0-amd64-DVD-1.iso \
+--name debian-virtins \
+--memory 4096 \
+--vcpus 4 \
+--os-variant debian13 \
+--disk /var/lib/libvirt/images/test/debian-virtins.qcow2,size=100 \
+--network network=default,model=virtio \
+--graphics vnc,listen=0.0.0.0,port=5910
+
+```
+
+运行参数:
+
+- `-c, --cdrom STRING`: 安装方式,这里是通过本地光盘介质安装
+- `-n, --name STRING`: 指定 VM 名称,必须全局唯一
+- `--memory MEMORY`: 指定内存大小
+- `--vcpus VCPUS`: 指定 VM 的 vCPUs(虚拟 CPU) 个数
+- `--os-variant OS_VARIANT, --osinfo OS_VARIANT`: 指定安装的系统类型,可以通过 `virt-install --osinfo list` 查看全部可用类型
+- `--disk DISK`: 指定 VM 存储介质
+- `-w NETWORK, --network NETWORK`: 配置 VM 网络接口,这里使用的默认的 NAT 网络
+- `--graphics GRAPHICS`: 配置 VM 显示设置,这里开放了一个全局 VNC 端口
+
+运行之后因为没有图形环境,默认尝试连接 `virt-viewer` 失败,然后转为等待安装完成 (等待使用 VNC 远程连接运行安装过程):
+
+```bash
+$ virt-install --cdrom /var/lib/libvirt/images/debian-13.3.0-amd64-DVD-1.iso --name debian-virtins --memory 4096 --vcpus 4 --os-variant debian13 --disk /var/lib/libvirt/images/test/debian-virtins.qcow2,size=100 --network network=default,model=virtio --graphics vnc,listen=0.0.0.0,port=5910
+
+WARNING  Graphics requested but DISPLAY is not set. Not running virt-viewer.
+WARNING  No console to launch for the guest, defaulting to --wait -1
+
+Starting install…
+Allocating 'debian-virtins.qcow2'                                                                    |  15 MB  00:00:04 … 
+Creating domain…                                                                                   |    0 B  00:00:00     
+
+Domain is still running. Installation may be in progress.
+Waiting for the installation to complete.
+```
+
+然后在自己的电脑上使用 VNC 远程连接到 `ip:5910`,需要在自动选择安装方式 (图形/命令行) 之前连接并选择到图形安装,选择之后 VNC 会中断,过一会之后重新连接即可:
+
+![](assets/KVM/使用%20virsh+virt-install%20管理-20260121102406671.png)
+
+安装完成之后仍然在等待,`Ctrl+c` 停止即可,虚拟机不会停止
+
+还可以基于现有磁盘镜像构建虚拟机:
+
+```bash
+# 先删除该虚拟机
+$ virsh undefine debian13
+Domain 'debian13' has been undefined
+# 根据该虚拟机的镜像运行
+$ virt-install --import --name debian-virtins --memory 4096 --vcpus 4 --os-variant debian13 --disk /var/lib/libvirt/images/debian13.qcow2,size=100 --network network=default,model=virtio --graphics vnc,listen=0.0.0.0,port=5910
+
+WARNING  Graphics requested but DISPLAY is not set. Not running virt-viewer.
+WARNING  No console to launch for the guest, defaulting to --wait -1
+
+Starting install…
+Creating domain…                                                                                   |    0 B  00:00:00     
+
+Domain is still running. Installation may be in progress.
+Waiting for the installation to complete.
+```
+
+![](assets/KVM/使用%20virsh+virt-install%20管理-20260121105218295.png)
+
+##### 使用 Cockpit Web 管理
+
+安装 `cockpit` 和 `cockpit-machines` 软件包 (需要从 `backports` 仓库下载最新版):
+
+```bash
+$ sudo apt install -t jammy-backports cockpit cockpit-machines
+```
+
+安装完成之后通过浏览器访问服务器的 `9090` 端口,密码是系统的用户和密码,需要先在右上角解锁管理权限,然后在虚拟机标签页创建虚拟机:
+
+![](assets/KVM/使用%20Cockpit%20Web%20管理-20260121164648266.png)
+
+点击创建并运行会采用一些默认设置创建虚拟机,可以点击创建并编辑在创建前编辑这些配置,创建完成之后就可以管理虚拟机:
+
+![](assets/KVM/使用%20Cockpit%20Web%20管理-20260121164821533.png)
+
+##### 修改网络为桥接
+
+现在系统中的网络配置为 NAT 转换
+
+![](assets/KVM/修改网络为桥接-20260121110119925.png)
+
+首先根据 [Ubuntu网络切换为网桥模式](网络配置.md#切换为网桥模式) 创建一个网桥并将网卡添加上:
+
+```bash
+$ ip a
+8: ens1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq master br0 state UP group default qlen 1000
+    link/ether 90:e2:ba:8b:8c:ec brd ff:ff:ff:ff:ff:ff
+    altname enp5s0
+10: virbr0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 52:54:00:90:36:64 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+       valid_lft forever preferred_lft forever
+22: vnet11: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master virbr0 state UNKNOWN group default qlen 1000
+    link/ether fe:54:00:b7:1e:d4 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::fc54:ff:feb7:1ed4/64 scope link 
+       valid_lft forever preferred_lft forever
+23: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 26:36:b0:44:1f:08 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.5/24 brd 10.0.0.255 scope global br0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::2436:b0ff:fe44:1f08/64 scope link 
+       valid_lft forever preferred_lft forever
+
+$ ip r
+default via 10.0.0.1 dev br0 proto static 
+10.0.0.0/24 dev br0 proto kernel scope link src 10.0.0.5 
+192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 
+```
+
+然后在 virt-install 创建虚拟机时将其网卡加入到网桥中:
+
+```bash
+$ virt-install --import --name debian-virtins --memory 4096 --vcpus 4 --os-variant debian13 --disk /var/lib/libvirt/images/debian13.qcow2,size=100 --network bridge=br0,model=virtio --graphics vnc,listen=0.0.0.0,port=5910
+```
+
+随后在虚拟机中需要手动配置静态 IP,配置为网桥所配置的 IP 段即可
+
+##### virsh 管理虚拟机
+
+列出所有虚拟机:
+
+```bash
+$ virsh list --all
+ Id   Name             State
+---------------------------------
+ 10   debian-virtins   running
+ -    debian13         shut off
+```
+
+停止和删除虚拟机:
+
+```bash
+$ virsh list --all
+ Id   Name             State
+---------------------------------
+ 10   debian-virtins   running
+ -    debian13         shut off
+
+$ virsh destroy debian-virtins
+Domain 'debian-virtins' destroyed
+
+$ virsh list --all
+ Id   Name             State
+---------------------------------
+ -    debian-virtins   shut off
+ -    debian13         shut off
+
+$ virsh undefine debian-virtins
+Domain 'debian-virtins' has been undefined
+
+$ virsh list --all
+ Id   Name       State
+---------------------------
+ -    debian13   shut off
+```
+
+查看网络状态:
+
+```bash
+$ virsh net-list --all
+ Name      State    Autostart   Persistent
+--------------------------------------------
+ default   active   yes         yes
+```
+
+查看 XML 格式的网络信息:
+
+```bash
+$ virsh net-dumpxml default
+<network connections='1'>
+  <name>default</name>
+  <uuid>4ee9e6a8-f26a-4770-940b-14c3e9452623</uuid>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:90:36:64'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254'/>
+    </dhcp>
+  </ip>
+</network>
+```
 
 ## 问题
 
