@@ -8,7 +8,7 @@ author: jianghudao
 tags:
 isCJKLanguage: true
 date: 2026-02-24T09:31:20+08:00
-lastmod: 2026-02-24T16:13:44+08:00
+lastmod: 2026-03-02T17:54:33+08:00
 ---
 
 ## 使用 NetworkManager VPN 代替 Windows VPN
@@ -143,3 +143,189 @@ $ ip route get 20.0.0.123
 20.0.0.123 dev ppp1 src 172.16.0.51 uid 1000 
     cache 
 ```
+
+## 使用 Linux 版本的 OpenVPN
+
+在 Windows 环境下，通常通过 OpenVPN 客户端导入 `client.ovpn` 文件进行连接。 Linux 系统同样支持 OpenVPN，安装及官方说明详见 [官网](https://community.openvpn.net/Pages/OpenVPN3Linux#stable-repository-debian-ubuntu)。
+
+在 Linux 上，可以使用 `openvpn3` 命令行工具来管理配置和控制连接。
+
+### 管理配置
+
+导入配置：
+
+```bash
+$ openvpn3 config-import -c client.ovpn   
+Configuration imported.  Configuration path: /net/openvpn/v3/configuration/eefc239dxf193x409bx933exb272bbc65dae
+```
+
+导入配置时，默认会将使用的路径和文件名作为配置的名称，例如：
+
+```bash
+Configuration Name                                        Last used
+--------------------------------------------------------------------------
+../client.ovpn                                            -
+--------------------------------------------------------------------------
+```
+
+可以使用 `-n` 参数手动指定配置名称：
+
+```bash
+$ openvpn3 config-import -c ../client.ovpn -n client.ovpn
+Configuration imported.  Configuration path: /net/openvpn/v3/configuration/befb7fe8x55e8x4eddx8dc2xa8cf28ff66e8
+
+```
+
+查看已导入的配置列表：
+
+```bash
+$ openvpn3 configs-list       
+Configuration Name                                        Last used
+------------------------------------------------------------------------------
+client.ovpn                                               -
+------------------------------------------------------------------------------
+```
+
+查看详细配置信息：
+
+```bash
+# 查看详细配置
+$ openvpn3 configs-list --json         
+{
+	"/net/openvpn/v3/configuration/eefc239dxf193x409bx933exb272bbc65dae" : 
+	{
+		"acl" : 
+		{
+			"locked_down" : false,
+			"owner" : "mintuser",
+			"public_access" : false
+		},
+		"dco" : false,
+		"imported" : "2026-01-07 10:00:20",
+		"imported_tstamp" : 1767751220,
+		"lastused" : "",
+		"lastused_tstamp" : 0,
+		"name" : "client.ovpn",
+		"transfer_owner_session" : false,
+		"use_count" : 0,
+		"valid" : true
+	}
+}
+
+```
+
+可以使用配置路径 (`/net/openvpn/v3/configuration/*`) 删除指定配置。确认删除时必须输入大写的 `YES`：
+
+```bash
+$ openvpn3 config-remove --path /net/openvpn/v3/configuration/04d47ef7xb903x4fdcx9e1axbcf3a51e00bd
+This operation CANNOT be undone and removes this configuration profile completely.
+
+Are you sure you want to do this? (enter yes in upper case) YES
+Configuration removed.
+
+```
+
+也可以直接使用配置名称进行删除：
+
+```bash
+$ openvpn3 config-remove -c client.ovpn
+This operation CANNOT be undone and removes this configuration profile completely.
+Are you sure you want to do this? (enter yes in upper case) YES
+Configuration removed.
+
+```
+
+### 管理会话
+
+使用指定配置启动 VPN 会话（启动前需确保已关闭其他代理服务）：
+
+```bash
+$ openvpn3 sessions-start -c client.ovpn
+
+```
+
+查看当前活动的会话状态：
+
+```bash
+$ openvpn3 sessions-list                
+-----------------------------------------------------------------------------
+        Path: /net/openvpn/v3/sessions/5ab7e47ds81des4659saf29sc31adbb71f09
+     Created: 2026-01-07 10:58:49                       PID: 20736
+       Owner:                                Device: tun0
+ Config name: client.ovpn
+Connected to: tcp:
+      Status: Connection, Client connected
+-----------------------------------------------------------------------------
+
+```
+
+停止指定的 VPN 会话连接：
+
+```bash
+$ openvpn3 session-manage -D -c client.ovpn
+
+Initiated session shutdown.
+
+Connection statistics:
+     BYTES_IN……………..1005136
+     BYTES_OUT……………..138148
+     PACKETS_IN……………….836
+     PACKETS_OUT………………775
+     TUN_BYTES_IN…………..115241
+     TUN_BYTES_OUT………….977833
+     TUN_PACKETS_IN……………762
+     TUN_PACKETS_OUT…………..924
+
+```
+
+## 使用 SSH 隧道访问带外
+
+需要访问内网服务器的带外管理界面,该带外服务器通过一台 Linux 管理机相连,本地主机无法直接访问，需要通过一台跳板机（服务器 1）进行中转。
+
+> 如果连接的是 Windows 管理机则可以直接通过 RDP 远程连接到 windows 管理机然后 [通过 IE 浏览器访问带外](../其它/IE.md)。
+
+### 原方案
+
+在 Windows 环境下，通常配合 Proxifier 软件实现：
+
+先通过 `ssh` 远程连接到跳板机（服务器 1）:
+
+```bash
+ssh root@跳板机ip
+```
+
+然后在跳板机上运行 SOCKS 代理，将跳板机的 `7070` 端口代理到内网管理机（服务器 2）：
+
+```bash
+ssh -XY -vCNgD 0.0.0.0:7070 -o ServerAliveInterval=20 -o ConnectTimeout=60 -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o GSSAPIAuthentication=no -p 22 root@内网管理机IP
+```
+
+最后在 Windows 主机上使用 **Proxifier** 软件，连接到跳板机的 `7070` 端口。随后即可在主机的浏览器中直接访问带外 IP。
+
+### Linux 替代方案
+
+Linux 上没有**Proxifier** 软件,该软件主要是给其他软件设置代理,我访问带外使用的 firefox 浏览器本身就可以配置代理,可以直接使用 SSH 隧道的本地端口转发功能，配合浏览器的代理设置来实现相同的效果。
+
+#### 建立 SOCKS 代理
+
+与原方案相同，首先在跳板机（服务器 1）上执行上述命令，建立连接到内网管理机（服务器 2）的 SOCKS 代理，并监听在跳板机的 `7070` 端口。
+
+```bash
+ssh root@跳板机ip
+
+ssh -XY -vCNgD 0.0.0.0:7070 -o ServerAliveInterval=20 -o ConnectTimeout=60 -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -o GSSAPIAuthentication=no -p 22 root@内网管理机IP
+```
+
+#### 配置本地端口转发
+
+在本地 Linux 主机上运行以下命令，将本地的 `7070` 端口通过 SSH 隧道映射到跳板机的 `127.0.0.1:7070` 端口：
+
+```bash
+ssh -N -L 7070:127.0.0.1:7070 root@跳板机IP
+```
+
+#### 配置浏览器代理
+
+在本地浏览器（如 Firefox）的网络设置中，将代理配置为 SOCKS5，地址填写为 `127.0.0.1`，端口填写为 `7070`。
+
+完成设置后，即可通过本地浏览器直接访问位于内网的带外管理界面。
