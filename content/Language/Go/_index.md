@@ -1,7 +1,7 @@
 ---
-title: Blog
+title: Go
 type: chapter
-weight: 12
+weight: 50
 ---
 
 {{% children type="list" description=false %}}
